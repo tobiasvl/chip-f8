@@ -68,6 +68,17 @@ chip8offset =	$2600
 ; Main Program Code ;
 ;===================;
 
+	MAC os
+	; adds missing instruction: OS r
+	; modifies r0
+	com
+	lr 0, a
+	lr a, {1}
+	com
+	ns 0
+	com
+	ENDM
+
 ;---------------;
 ; Program Entry ;
 ;---------------;
@@ -245,6 +256,14 @@ firstDigitD:
 	xdc
 	lr dc, Q			; load I into DC
 
+	; store q in 5,0 so we can use q to store dc later...
+	lisu 5
+	lisl 0
+	lr a, qu
+	lr i, a
+	lr a, ql
+	lr d, a
+
 ; just to recap...
 ; r0 row counter
 ; r1 first opcode
@@ -260,115 +279,134 @@ firstDigitD:
 ; DC1 screen buffer with offset
 
 .nextSpriteRow:
-	li 0
-	lr 3, a				; set r3 to 0, it will be the left byte
+	clr
+
+	lisu 4
+	lisl 0
+	lr i, a
+	lr d, a
+
 	lr a, 0				; get row counter
-	;bz .resetI			; branch to next stage if they're all done
 	ns 0				; AND a with itself
-	bnz .dontResetI
-	lr dc, Q			; load I into DC0
-	jmp .displaySprite
+	bz .displaySprite		; we're done, reset I and display the sprite
 .dontResetI:
 	ds 0				; decrease row counter
 	lm					; get one byte of sprite data from I and advance I
 
-	lisu 4				; get r32 for scratch
-	lisl 0				; we're using way too many registers here
+	;lisu 4				; get r32 for scratch
+	;lisl 0				; we're using way too many registers here
 
-	lr i, a				; put byte in scratch 32 ; at 0095 now...
+	lr s, a				; put byte in scratch 32 ; at 0095 now...
 	lr a, 7				; get bit offset for first bit of sprite data
-	lr s, a				; put byte in scratch 33 to use as bit counter
+	lr 3, a				; put byte in scratch 33 to use as bit counter
 
 .splitSpriteRow:
-	lr a, d				; get current bit count
-	ns d				; AND a with itself
+	lr a, 3				; get current bit count
+	ns 3				; AND a with itself
 	bz .storeSpriteRow	; sprite data is now split across two rows
-	lr a, s
-	sr 1
-	lr i, a
-	lr a, 3
-	bt 2, .rightShiftWithCarry
-	sr 1
-	jmp .rightShiftWithNoCarry
+	;lr a, d
+	lr a, s				; load byte into a
+	ni 1
+	bz .rightShiftWithNoCarry
+	
 .rightShiftWithCarry:
+	lr a, s				; load byte into a
+	sr 1				; shift it right once
+	lr i, a				; load the shifted byte back
+	lr a, s				; load new byte into a
 	sr 1
 	oi $80
+	lr d, a				; load shifted byte into a
+	ds 3
+	jmp .splitSpriteRow
+
 .rightShiftWithNoCarry:
-	lr 3, a
-	ds s
+	lr a, s				; load byte into a
+	sr 1				; shift it right once
+	lr i, a				; load the shifted byte back
+	lr a, s				; load new byte into a
+	sr 1
+	lr d, a				; load shifted byte into a
+	ds 3
 	jmp .splitSpriteRow
 
 .storeSpriteRow:
-	lisu 4
+	xdc					; switch to screen buffer pointer
+
+	lr q, dc			; store DC in Q so we can revert here
+
+	lisu 4				; take the assembled bytes
 	lisl 0
 
-	lr a, s
-	xdc
-	st
-	lr a, 3
-	st
+	;lr a, s
+	;nm
+
+	lr a, i				; first assembled byte
+	xm					; xor with screen data (this increments dc)
+	lr dc, q			; restore dc
+	st					; store xor-ed result
+
+	; check for screen boundary, we don't wrap sprites
+	lr a, ql
+	lr 3, a
+	lr q, dc			; store DC in Q so we can revert here
+	lr a, ql
+	xs 3				; xor old and new ql
+	ni $08				; see if we crossed from $2F?7 to $2F?8; if so, we've wrapped around
+	bnz .outOfBounds
+
+	;lr a, s
+	;nm
+
+	lr a, d				; second assembled byte
+	xm					; xor with screen data (this increments dc)
+	lr dc, q			; restore dc
+	st					; store xor-ed result
+
+.outOfBounds:
+	li 6				; go to next row in screen data
+	adc
+	xdc					; swap back to I pointer for next sprite row
+
 	jmp .nextSpriteRow
 
 .displaySprite:
 
-.displayLeftByte:
-
-.displayRightByte:
-
-.displayNextRow:
-
-.saveCollisionFlag:	
+.blitSprite:
+	; Right now we blit the entire screen buffer
+	; but we probably want to only blit the area
+	; the sprite was drawn to. To do that we need
+	; to change a lot of register use.
 
 	dci screenparams
 	pi blitGraphic
 
+	; restore I
+	lisu 5
+	lisl 0
+	lr a, i
+	lr qu, a
+	lr a, s
+	lr ql, a
+	lr dc, Q			; load old I into DC0
+
 	jmp fetchDecodeLoop
-
-infiniteLoop:
-	jmp infiniteLoop
-
-
-	MAC os
-	; adds missing instruction: OS r
-	; modifies r0
-	xi $ff
-	lr 0, a
-	lr a, {1}
-	xi $ff
-	ns 0
-	xi $ff
-	ENDM
 
 getX:
 	; returns ISAR pointing at VX
-	lr a, 1				; load first byte of opcode
-	ni $0f				; remove first nibble
-	lr 0, a				; store in scratch 0
-	ni $07				; get octal for isl
-	lr 4, a				; store lower octal in scratch 4
-	lr a, 0				; get scratch 0
-	ni $08				; get octal for isu
-	inc					; increment by 2 to get correct ISAR
-	inc
-	os 4				; OR with scratch 4
-	lr is, a			; finally load into ISAR
+	lr a, 1
+	ni $0f
+	oi $10
+	lr is, a
 	pop
 
 getY:
-	lr a, 2				; load second byte of opcode
-	ni $f0				; remove first nibble
-	sr 4				; shift right 4<
-	lr 0, a				; store in scratch 0
-	ni $07				; get octal for isl
-	lr 4, a				; store lower octal in scratch 4
-	lr a, 0				; get scratch 0
-	ni $08				; get octal for isu
-	inc
-	inc
-	os 4				; OR with scratch 4
-	lr is, a			; finally load into ISAR
+	lr a, 1
+	ni $f0
+	sr 4
+	oi $10
+	lr is, a
 	pop
-
 
 screenparams:
 	.byte bkg
@@ -378,11 +416,6 @@ screenparams:
 	.byte 64
 	.byte 32
 	.word screenbuffer
-
-drawscreen:
-	dci screenparams
-	pi blitGraphic
-
 
 ;===========;
 ; Blit Code ;
