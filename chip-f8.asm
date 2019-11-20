@@ -120,7 +120,7 @@ fetchDecodeLoop:
 	lr 2, a				; store second opcode byte in 2
 	lr h, dc			; update PC
 
-	sr 4				; A >>= 4
+	;sr 4				; A >>= 4
 
 	lr a, 1
 	ns 1				; AND a with itself
@@ -158,12 +158,11 @@ firstDigitZero subroutine
 	bz .returnFromSubroutine
 	jmp fetchDecodeLoop
 .clearScreen:
-	jmp fetchDecodeLoop ; TODO remove this skip, it's just here to not clobber registers
 	dci screenbuffer
-	li 255				; copy 132 bytes
-	lr 0, a				; use r3 as counter
-	li 0
+	li 255				; copy 256 bytes
+	lr 0, a				; use r0 as counter
 .copyByte:
+	li 0
 	st					; copy byte from A to screen and advance DC0
 	ds 0				; decrement counter
 	lr a, 0				; check counter
@@ -186,34 +185,14 @@ firstDigitOne:
 	jmp fetchDecodeLoop
 
 firstDigitSix:
-	lr a, 1				; load first byte of opcode
-	ni $0f				; remove first nibble
-	lr 0, a				; store in scratch 0
-	ni $07				; get octal for isl
-	lr 4, a				; store lower octal in scratch 4
-	lr a, 0				; get scratch 0
-	ni $08				; get octal for isu
-	sl 1
-	sl 1
-	ns 4				; AND with scratch 4
-	lr is, a			; finally load into ISAR
+	pi getX
 
 	lr a, 2				; get second byte of opcode
 	lr s, a				; set it
 	jmp fetchDecodeLoop
 
 firstDigitSeven:
-	lr a, 1				; load first byte of opcode
-	ni $0f				; remove first nibble
-	lr 0, a				; store in scratch 0
-	ni $07				; get octal for isl
-	lr 4, a				; store lower octal in scratch 4
-	lr a, 0				; get scratch 0
-	ni $08				; get octal for isu
-	sl 1
-	sl 1
-	ns 4				; AND with scratch 4
-	lr is, a			; finally load into ISAR
+	pi getX
 
 	lr a, s				; get current value of VX
 	as 2				; add value of second byte of opcode
@@ -231,17 +210,8 @@ firstDigitA:
 	jmp fetchDecodeLoop
 
 firstDigitD:
-	lr a, 1				; load first byte of opcode
-	ni $0f				; remove first nibble
-	lr 0, a				; store in scratch 0
-	ni $07				; get octal for isl
-	lr 4, a				; store lower octal in scratch 4
-	lr a, 0				; get scratch 0
-	ni $08				; get octal for isu
-	sl 1
-	sl 1
-	ns 4				; AND with scratch 4
-	lr is, a			; finally load into ISAR
+	pi getX
+
 	lr a, s				; get X value
 	lr 5, a				; store X in scratch 5
 
@@ -254,20 +224,9 @@ firstDigitD:
 	sr 1
 	lr 8, a				; store position in scratch 8
 
-	lr a, 2				; load second byte of opcode
-	ni $f0				; remove first nibble
-	sr 4				; shift right 4
-	lr 0, a				; store in scratch 0
-	ni $07				; get octal for isl
-	lr 4, a				; store lower octal in scratch 4
-	lr a, 0				; get scratch 0
-	ni $08				; get octal for isu
-	sl 1
-	sl 1
-	ns 4				; AND with scratch 4
-	lr is, a			; finally load into ISAR
-	lr a, s				; get Y value
+	pi getY
 
+	lr a, s				; get Y value
 	ni $1F				; modulo 32
 	sl 1				; position in display memory of the first row that will contain sprite data
 	sl 1
@@ -360,9 +319,55 @@ firstDigitD:
 
 .saveCollisionFlag:	
 
+	dci screenparams
+	pi blitGraphic
+
+	jmp fetchDecodeLoop
+
 infiniteLoop:
 	jmp infiniteLoop
 
+
+	MAC os
+	; adds missing instruction: OS r
+	; modifies r0
+	xi $ff
+	lr 0, a
+	lr a, {1}
+	xi $ff
+	ns 0
+	xi $ff
+	ENDM
+
+getX:
+	; returns ISAR pointing at VX
+	lr a, 1				; load first byte of opcode
+	ni $0f				; remove first nibble
+	lr 0, a				; store in scratch 0
+	ni $07				; get octal for isl
+	lr 4, a				; store lower octal in scratch 4
+	lr a, 0				; get scratch 0
+	ni $08				; get octal for isu
+	inc					; increment by 2 to get correct ISAR
+	inc
+	os 4				; OR with scratch 4
+	lr is, a			; finally load into ISAR
+	pop
+
+getY:
+	lr a, 2				; load second byte of opcode
+	ni $f0				; remove first nibble
+	sr 4				; shift right 4<
+	lr 0, a				; store in scratch 0
+	ni $07				; get octal for isl
+	lr 4, a				; store lower octal in scratch 4
+	lr a, 0				; get scratch 0
+	ni $08				; get octal for isu
+	inc
+	inc
+	os 4				; OR with scratch 4
+	lr is, a			; finally load into ISAR
+	pop
 
 
 screenparams:
