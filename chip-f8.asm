@@ -253,6 +253,12 @@ firstDigitD:
 	lr 9, a				; save in scratch 9 as display row counter
 	lr 0, a				; save in scratch 0 as row counter
 
+	; clear VF before drawing
+	lisu 3
+	lisl 7
+	clr
+	lr s, a
+
 	xdc
 	lr dc, Q			; load I into DC
 
@@ -338,8 +344,13 @@ firstDigitD:
 	lisu 4				; take the assembled bytes
 	lisl 0
 
-	;lr a, s
-	;nm
+	lr a, s				; first assembled byte
+	nm					; and with screen data to detect collision
+	bz .noCollision1
+	li 1
+	lr 0, a
+.noCollision1:
+	lr dc, q			; restore dc
 
 	lr a, i				; first assembled byte
 	xm					; xor with screen data (this increments dc)
@@ -355,8 +366,13 @@ firstDigitD:
 	ni $08				; see if we crossed from $2F?7 to $2F?8; if so, we've wrapped around
 	bnz .outOfBounds
 
-	;lr a, s
-	;nm
+	lr a, s
+	nm					; and with screen data
+	bz .noCollision2
+	li 1
+	lr 0, a
+.noCollision2:
+	lr dc, q			; restore dc
 
 	lr a, d				; second assembled byte
 	xm					; xor with screen data (this increments dc)
@@ -367,6 +383,12 @@ firstDigitD:
 	li 6				; go to next row in screen data
 	adc
 	xdc					; swap back to I pointer for next sprite row
+
+	; load collision flag into VF
+	lisu 3
+	lisl 7
+	lr a, 0
+	lr s, a
 
 	jmp .nextSpriteRow
 
