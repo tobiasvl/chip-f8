@@ -58,10 +58,9 @@ chip8offset =	$2600
 ; r1-r2: current opcode
 ; r3: current palette
 ; r4-r9: scratch
-; r10-r11: PC
-; r14-r15: I
+; r10-r11 (H): PC
 ; r16-r31: CHIP-8 variables V0–VF
-; r32-
+; r40-r41 (o50): I
 ; r60-63
 
 ;===================;
@@ -131,34 +130,34 @@ fetchDecodeLoop:
 	lr 2, a				; store second opcode byte in 2
 	lr h, dc			; update PC
 
-	;sr 4				; A >>= 4
-
+	dci jumpTable
 	lr a, 1
-	ns 1				; AND a with itself
-	bz firstDigitZero	; branch if 0
-	ni $f0				; get first nibble of opcode
-	lr 0, a				; store in scratch 0 for switching
-
-	xi $10
-	bz firstDigitOne
-
-	lr a, 0
-	xi $60
-	bz firstDigitSix
-
-	lr a, 0
-	xi $70
-	bz firstDigitSeven
-
-	lr a, 0
-	xi $A0
-	bz firstDigitA
-
-	lr a, 0
-	xi $D0
-	bz firstDigitD
-
-	jmp fetchDecodeLoop
+	sr 4
+	adc
+	adc
+	lm
+	lr qu, a
+	lm
+	lr ql, a
+	lr p0, q
+	
+jumpTable:
+	.word firstDigitZero
+	.word firstDigitOne
+	.word firstDigitTwo
+	.word firstDigitThree
+	.word firstDigitFour
+	.word firstDigitFive
+	.word firstDigitSix
+	.word firstDigitSeven
+	.word firstDigitEight
+	.word firstDigitNine
+	.word firstDigitA
+	.word firstDigitB
+	.word firstDigitC
+	.word firstDigitD
+	.word firstDigitE
+	.word firstDigitF
 
 firstDigitZero subroutine
 	lr a, 2
@@ -195,6 +194,18 @@ firstDigitOne:
 	lr 11, a			; load into PC
 	jmp fetchDecodeLoop
 
+firstDigitTwo:
+	jmp fetchDecodeLoop
+
+firstDigitThree:
+	jmp fetchDecodeLoop
+
+firstDigitFour:
+	jmp fetchDecodeLoop
+	
+firstDigitFive:
+	jmp fetchDecodeLoop
+
 firstDigitSix:
 	pi getX
 
@@ -210,14 +221,178 @@ firstDigitSeven:
 	lr s, a				; set new value of VX
 	jmp fetchDecodeLoop
 
+firstDigitEight:
+	lr a, 2				; get second byte of opcode
+	ni $0f				; remove first nibble
+	lr 0, a
+
+	; TODO convert below to jump table (or branch/offset table if space permits)
+
+	xi $00
+	bz .lastDigitZero
+
+	lr a, 0
+	xi $01
+	bz .lastDigitOne
+
+	lr a, 0
+	xi $02
+	bz .lastDigitTwo
+
+	lr a, 0
+	xi $03
+	bz .lastDigitThree
+
+	lr a, 0
+	xi $04
+	bz .lastDigitFour
+
+	lr a, 0
+	xi $05
+	bz .lastDigitFive
+
+	lr a, 0
+	xi $06
+	bz .lastDigitSix
+
+	lr a, 0
+	xi $07
+	bz .lastDigitSeven
+
+	lr a, 0
+	xi $0e
+	bz .lastDigitE
+
+.lastDigitZero:
+	pi getY
+
+	lr a, s
+	lr 0, a
+
+	pi getX
+
+	lr a, 0
+	lr s, a
+
+	jmp fetchDecodeLoop
+
+.lastDigitOne:
+	pi getY
+
+	lr a, s
+	lr 0, a
+
+	pi getX
+
+	lr a, s
+
+	os 0
+	lr s, a
+
+	jmp fetchDecodeLoop
+
+.lastDigitTwo:
+	pi getY
+
+	lr a, s
+	lr 0, a
+
+	pi getX
+
+	lr a, s
+
+	ns 0
+	lr s, a
+
+	jmp fetchDecodeLoop
+.lastDigitThree:
+	pi getY
+
+	lr a, s
+	lr 0, a
+
+	pi getX
+
+	lr a, s
+
+	xs 0
+	lr s, a
+
+	jmp fetchDecodeLoop
+.lastDigitFour:
+	pi getY
+
+	lr a, s
+	lr 0, a
+
+	pi getX
+
+	lr a, s
+
+	as 0
+	lr s, a
+
+	; TODO set VF
+
+	jmp fetchDecodeLoop
+.lastDigitFive:
+	jmp fetchDecodeLoop
+.lastDigitSix:
+	; TODO quirk
+	pi getY
+
+	lr a, s
+	lr 0, a
+
+	pi getX
+
+	lr a, 0
+	sr 1
+	lr s, a
+
+	; TODO set VF
+
+	jmp fetchDecodeLoop
+.lastDigitSeven:
+	jmp fetchDecodeLoop
+.lastDigitE:
+	; TODO quirk
+	pi getY
+
+	lr a, s
+	lr 0, a
+
+	pi getX
+
+	lr a, 0
+	sl 1
+	lr s, a
+
+	; TODO set VF
+
+	jmp fetchDecodeLoop
+	
+firstDigitNine:
+	jmp fetchDecodeLoop
+
 firstDigitA:
+	lisu 5
+	lisl 0
+
 	lr a, 1				; load first byte of opcode
 	ni $0F				; remove first nibble
 	ai $26				; add RAM offset
-	lr Qu, a			; load into I
+	lr i, a			; load into I
 
 	lr a, 2				; load second byte of opcode
-	lr Ql, a			; load into I
+	lr s, a			; load into I
+
+	jmp fetchDecodeLoop
+	
+firstDigitB:
+	jmp fetchDecodeLoop
+	
+firstDigitC:
 	jmp fetchDecodeLoop
 
 firstDigitD:
@@ -260,15 +435,16 @@ firstDigitD:
 	lr s, a
 
 	xdc
-	lr dc, Q			; load I into DC
 
-	; store q in 5,0 so we can use q to store dc later...
+	; load I into DC
 	lisu 5
 	lisl 0
-	lr a, qu
-	lr i, a
-	lr a, ql
-	lr d, a
+	lr a, i
+	lr qu, a
+	lr a, s
+	lr ql, a
+
+	lr dc, Q			; load I into DC
 
 ; just to recap...
 ; r0 row counter
@@ -299,9 +475,6 @@ firstDigitD:
 	ds 0				; decrease row counter
 	lm					; get one byte of sprite data from I and advance I
 
-	;lisu 4				; get r32 for scratch
-	;lisl 0				; we're using way too many registers here
-
 	lr s, a				; put byte in scratch 32 ; at 0095 now...
 	lr a, 7				; get bit offset for first bit of sprite data
 	lr 3, a				; put byte in scratch 33 to use as bit counter
@@ -310,7 +483,6 @@ firstDigitD:
 	lr a, 3				; get current bit count
 	ns 3				; AND a with itself
 	bz .storeSpriteRow	; sprite data is now split across two rows
-	;lr a, d
 	lr a, s				; load byte into a
 	ni 1
 	bz .rightShiftWithNoCarry
@@ -402,16 +574,12 @@ firstDigitD:
 
 	dci screenparams
 	pi blitGraphic
-
-	; restore I
-	lisu 5
-	lisl 0
-	lr a, i
-	lr qu, a
-	lr a, s
-	lr ql, a
-	lr dc, Q			; load old I into DC0
-
+	jmp fetchDecodeLoop
+	
+firstDigitE:
+	jmp fetchDecodeLoop
+	
+firstDigitF:
 	jmp fetchDecodeLoop
 
 getX:
