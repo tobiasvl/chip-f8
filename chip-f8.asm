@@ -197,13 +197,56 @@ firstDigitOne:
 firstDigitTwo:
 	jmp fetchDecodeLoop
 
-firstDigitThree:
+firstDigitThree subroutine
+	pi getX
+
+	lr a, 2
+
+	xs s
+
+	bnz .notEqual
+
+	lr dc, h			; load PC
+	lm
+	lm
+	lr h, dc
+.notEqual
 	jmp fetchDecodeLoop
 
-firstDigitFour:
+firstDigitFour subroutine
+	pi getX
+
+	lr a, 2
+
+	xs s
+
+	bz .equal
+
+	lr dc, h			; load PC
+	lm
+	lm
+	lr h, dc
+.equal:
 	jmp fetchDecodeLoop
 	
-firstDigitFive:
+firstDigitFive subroutine
+	; TODO assert that last digit is 0
+
+	pi getX
+
+	lr a, s
+
+	pi getY
+
+	xs s
+
+	bnz .notEqual
+
+	lr dc, h			; load PC
+	lm
+	lm
+	lr h, dc
+.notEqual:
 	jmp fetchDecodeLoop
 
 firstDigitSix:
@@ -372,7 +415,24 @@ firstDigitEight:
 
 	jmp fetchDecodeLoop
 	
-firstDigitNine:
+firstDigitNine subroutine
+	; TODO assert that last digit is 0
+
+	pi getX
+
+	lr a, s
+
+	pi getY
+
+	xs s
+
+	bz .equal
+
+	lr dc, h			; load PC
+	lm
+	lm
+	lr h, dc
+.equal:
 	jmp fetchDecodeLoop
 
 firstDigitA:
@@ -390,6 +450,23 @@ firstDigitA:
 	jmp fetchDecodeLoop
 	
 firstDigitB:
+	lr a, 1				; load first byte of opcode
+	ni $0F				; remove first nibble
+	ai $26				; add RAM offset
+	lr qu, a			; load into PC
+	
+	lr a, 2				; load second byte of opcode
+	lr ql, a			; load into PC
+
+	lr dc, q
+
+	lisu 2
+	lisu 0
+
+	lr a, s
+
+	adc
+
 	jmp fetchDecodeLoop
 	
 firstDigitC:
@@ -580,6 +657,168 @@ firstDigitE:
 	jmp fetchDecodeLoop
 	
 firstDigitF:
+	pi getX
+
+	lr a, 2				; get second byte of opcode
+	lr 0, a
+
+	; TODO convert below to jump table (or branch/offset table if space permits)
+
+	xi $07
+	bz .lastNibble07
+
+	lr a, 0
+	xi $0A
+	bz .lastNibble0A
+
+	lr a, 0
+	xi $15
+	bz .lastNibble15
+	
+	lr a, 0
+	xi $18
+	bz .lastNibble18
+	
+	lr a, 0
+	xi $1E
+	bz .lastNibble1E
+	
+	lr a, 0
+	xi $29
+	bz .lastNibble29
+	
+	lr a, 0
+	xi $33
+	bz .lastNibble33
+	
+	lr a, 0
+	xi $55
+	bz .lastNibble55
+	
+	lr a, 0
+	xi $65
+	bz .lastNibble65
+
+	jmp fetchDecodeLoop
+
+.lastNibble07:
+	jmp fetchDecodeLoop
+
+.lastNibble0A:
+	jmp fetchDecodeLoop
+	
+.lastNibble15:
+	jmp fetchDecodeLoop
+
+.lastNibble18:
+	jmp fetchDecodeLoop
+
+.lastNibble1E:
+	lisu 5
+	lisl 0
+
+	lr a, i
+	lr qu, a
+	lr a, s
+	lr ql, a
+
+	lr dc, q
+
+	pi getX
+
+	lr a, s
+	adc
+
+	lisu 5				; set ISAR to I
+	lisl 0
+
+	lr a, qu			; load Q into I via A
+	lr i, a
+	lr a, ql
+	lr s, a
+
+	jmp fetchDecodeLoop
+
+.lastNibble29:
+	pi getX
+
+	lr a, s				; get number in VX
+	sl 1				; multiply by 4
+	sl 1
+	as s				; add the number, so we multiply by 5
+
+	dci font			; set DC to the fontset's address
+	lr a, s
+	adc					; add the offset for the current character
+
+	lr q, dc			; load it into Q
+
+	lisu 5				; set ISAR to I
+	lisl 0
+
+	lr a, qu			; load Q into I via A
+	lr i, a
+	lr a, ql
+	lr s, a
+
+	jmp fetchDecodeLoop
+
+.lastNibble33:
+	jmp fetchDecodeLoop
+
+.lastNibble55:
+	lisu 5
+	lisl 0
+
+	lr a, i
+	lr qu, a
+	lr a, s
+	lr ql, a
+
+	lr dc, q
+
+	lr a, 1
+	ni $0F
+	lr 0, a
+
+	lisu 2
+	lisl 0
+
+.storeLoop:
+	lr a, i
+	st
+	ds 0				; TODO check that DS r sets W
+	bp .storeLoop		; if positive number, loop
+
+	; TODO quirk, store DC back in I via Q
+
+	jmp fetchDecodeLoop
+
+.lastNibble65:
+	lisu 5
+	lisl 0
+
+	lr a, i
+	lr qu, a
+	lr a, s
+	lr ql, a
+
+	lr dc, q
+
+	lr a, 1
+	ni $0F
+	lr 0, a
+
+	lisu 2
+	lisl 0
+
+.loadLoop:
+	lr a, i
+	lm
+	ds 0				; TODO check that DS r sets W
+	bp .loadLoop		; if positive number, loop
+
+	; TODO quirk, store DC back in I via Q
 	jmp fetchDecodeLoop
 
 getX:
@@ -597,6 +836,120 @@ getY:
 	oi $10
 	lr is, a
 	pop
+
+font:
+	; 0
+	.byte	%11110000
+	.byte	%10010000
+	.byte	%10010000
+	.byte	%10010000
+	.byte	%11110000
+
+	; 1
+	.byte	%00100000
+	.byte	%00100000
+	.byte	%00100000
+	.byte	%00100000
+	.byte	%00100000
+
+	; 2
+	.byte	%11110000
+	.byte	%00010000
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%11110000
+
+	; 3
+	.byte	%11110000
+	.byte	%00010000
+	.byte	%11110000
+	.byte	%00010000
+	.byte	%11110000
+
+	; 4
+	.byte	%10010000
+	.byte	%10010000
+	.byte	%11110000
+	.byte	%00010000
+	.byte	%00010000
+
+	; 5
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%11110000
+	.byte	%00010000
+	.byte	%11110000
+
+	; 6
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%11110000
+	.byte	%10010000
+	.byte	%11110000
+
+	; 7
+	.byte	%11110000
+	.byte	%00010000
+	.byte	%00100000
+	.byte	%00100000
+	.byte	%00100000
+
+	; 8
+	.byte	%11110000
+	.byte	%10010000
+	.byte	%11110000
+	.byte	%10010000
+	.byte	%11110000
+
+	; 9
+	.byte	%11110000
+	.byte	%10010000
+	.byte	%11110000
+	.byte	%00010000
+	.byte	%11110000
+
+	; A
+	.byte	%11110000
+	.byte	%10010000
+	.byte	%11110000
+	.byte	%10010000
+	.byte	%10010000
+
+	; B
+	.byte	%11100000
+	.byte	%10010000
+	.byte	%11100000
+	.byte	%10010000
+	.byte	%11100000
+
+	; C
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%10000000
+	.byte	%10000000
+	.byte	%11110000
+
+	; D
+	.byte	%11100000
+	.byte	%10010000
+	.byte	%10010000
+	.byte	%10010000
+	.byte	%11100000
+
+	; E
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%11110000
+
+	; F
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%11110000
+	.byte	%10000000
+	.byte	%10000000
+
 
 screenparams:
 	.byte bkg
