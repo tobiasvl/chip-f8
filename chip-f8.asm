@@ -442,10 +442,10 @@ firstDigitA:
 	lr a, 1				; load first byte of opcode
 	ni $0F				; remove first nibble
 	ai $26				; add RAM offset
-	lr i, a			; load into I
+	lr i, a				; load into I
 
 	lr a, 2				; load second byte of opcode
-	lr s, a			; load into I
+	lr s, a				; load into I
 
 	jmp fetchDecodeLoop
 	
@@ -467,10 +467,13 @@ firstDigitB:
 
 	adc
 
+	lr h, dc			; load into PC
+
 	jmp fetchDecodeLoop
 	
 firstDigitC:
-	jmp fetchDecodeLoop
+	jmp firstDigitSix
+	;jmp fetchDecodeLoop
 
 firstDigitD:
 	pi getX
@@ -497,13 +500,21 @@ firstDigitD:
 	lr 6, a				; store Y in scratch 6
 
 	as 8				; r6 + r8, should be the same as an OR since we've cleared each nibble, right??? TODO
+
+	;xdc
 	dci screenbuffer	; set dc to screenbuffer
+
+	bp .adcHack			; adc treats A as a signed number?????????
+
+	ni %01111111
+	dci $2f80
+
+.adcHack:
 	adc					; add a
 
 	lr a, 2				; get second byte of opcode
 	ni $0f				; remove first nibble
 	lr 9, a				; save in scratch 9 as display row counter
-	lr 0, a				; save in scratch 0 as row counter
 
 	; clear VF before drawing
 	lisu 3
@@ -524,7 +535,7 @@ firstDigitD:
 	lr dc, Q			; load I into DC
 
 ; just to recap...
-; r0 row counter
+; r0 scratch
 ; r1 first opcode
 ; r2 second opcode
 ; r3 left byte of assembled sprite
@@ -533,7 +544,7 @@ firstDigitD:
 ; r6 Y position in display memory of the first row that will contain sprite data
 ; r7 bit offset
 ; r8 position in pixel row of first byte that will contain sprite data
-; r9 display row counter
+; r9 row counter
 ; DC0 I
 ; DC1 screen buffer with offset
 
@@ -545,11 +556,11 @@ firstDigitD:
 	lr i, a
 	lr d, a
 
-	lr a, 0				; get row counter
-	ns 0				; AND a with itself
+	lr a, 9				; get row counter
+	ns 9				; AND a with itself
 	bz .displaySprite		; we're done, reset I and display the sprite
 .dontResetI:
-	ds 0				; decrease row counter
+	ds 9				; decrease row counter
 	lm					; get one byte of sprite data from I and advance I
 
 	lr s, a				; put byte in scratch 32 ; at 0095 now...
@@ -612,7 +623,8 @@ firstDigitD:
 	lr q, dc			; store DC in Q so we can revert here
 	lr a, ql
 	xs 3				; xor old and new ql
-	ni $08				; see if we crossed from $2F?7 to $2F?8; if so, we've wrapped around
+	ni $08				; see if we crossed from $2F?7 to $2F?8; if so, we've wrapped around X
+	li 7				; go to next row in screen data
 	bnz .outOfBounds
 
 	lr a, s
@@ -627,9 +639,9 @@ firstDigitD:
 	xm					; xor with screen data (this increments dc)
 	lr dc, q			; restore dc
 	st					; store xor-ed result
+	li 6				; go to next row in screen data
 
 .outOfBounds:
-	li 6				; go to next row in screen data
 	adc
 	xdc					; swap back to I pointer for next sprite row
 
@@ -830,7 +842,8 @@ getX:
 	pop
 
 getY:
-	lr a, 1
+	; returns ISAR pointing at VY
+	lr a, 2
 	ni $f0
 	sr 4
 	oi $10
