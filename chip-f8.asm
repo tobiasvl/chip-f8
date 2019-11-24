@@ -465,7 +465,7 @@ firstDigitB:
 
 	lr a, s
 
-	adc
+	adc					; TODO this is used as a two's complement number!!
 
 	lr h, dc			; load into PC
 
@@ -502,15 +502,10 @@ firstDigitD:
 	as 8				; r6 + r8, should be the same as an OR since we've cleared each nibble, right??? TODO
 
 	;xdc
-	dci screenbuffer	; set dc to screenbuffer
-
-	bp .adcHack			; adc treats A as a signed number?????????
-
-	ni %01111111
-	dci $2f80
-
-.adcHack:
-	adc					; add a
+	lr ql, a
+	li $2f				; screenbuffer
+	lr qu, a
+	lr dc, q
 
 	lr a, 2				; get second byte of opcode
 	ni $0f				; remove first nibble
@@ -738,13 +733,24 @@ firstDigitF:
 
 	pi getX
 
-	lr a, s
-	adc
+	; Now we want to add the value in the register selected by the ISAR to the address in DC.
+	; But ADC treats the value in A as a two's complement number, so we need to do this in a roundabout way:
+	lr a, s				; load VX offset into A
+	ns s				; AND the offset with itself to check the upper bit
+	bp .adcHack			; if bit 7 is not set, we just proceed as normal
+	sr 1				; if bit 7 is set, shift right
+	adc					; add this offset to DC
+	adc					; twice
+	lr a, s				; load the original offset again
+	ni 1				; get bit 0 so we can finally add that
+.adcHack:
+	adc					; add offset
 
 	lisu 5				; set ISAR to I
 	lisl 0
 
-	lr a, qu			; load Q into I via A
+	lr q, dc			; load DC back into Q
+	lr a, qu
 	lr i, a
 	lr a, ql
 	lr s, a
