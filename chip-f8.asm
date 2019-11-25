@@ -748,6 +748,20 @@ firstDigitD:
 	jmp fetchDecodeLoop
 	
 firstDigitE:
+	lr a, 2
+	xi $9e
+	bnz .ex9e
+	lr a, 2
+	xi $a1
+	bnz .exa1
+	jmp fetchDecodeLoop
+.ex9e:
+	jmp fetchDecodeLoop
+.exa1:
+	lr dc, h
+	lm
+	lm
+	lr h, dc
 	jmp fetchDecodeLoop
 	
 firstDigitF:
@@ -799,6 +813,12 @@ firstDigitF:
 	jmp fetchDecodeLoop
 
 .lastNibble0A:
+	; decrement PC by 2
+	lr dc, h
+	li $fe
+	adc
+	lr h, dc
+
 	jmp fetchDecodeLoop
 	
 .lastNibble15:
