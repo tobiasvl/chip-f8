@@ -119,7 +119,7 @@ copyGameToRAM subroutine
 	bnz .copyByte
 
 initInterpreter:
-	dci gameROM			; point at start of ROM
+	dci ram			; point at start of ROM
 	lr h, dc			; store PC in H (r10/r11)
 	
 	lisu 4				; set stack pointer
@@ -853,7 +853,6 @@ firstDigitF:
 	as s				; add the number, so we multiply by 5
 
 	dci font			; set DC to the fontset's address
-	lr a, s
 	adc					; add the offset for the current character
 
 	lr q, dc			; load it into Q
