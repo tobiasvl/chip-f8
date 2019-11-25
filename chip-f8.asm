@@ -379,6 +379,27 @@ firstDigitEight:
 
 	jmp fetchDecodeLoop
 .lastDigitFive:
+	pi getY
+
+	lr a, s
+
+	com
+	inc
+
+	lr 0, a
+
+	pi getX
+
+	lr a, s
+
+	as 0
+	as 0
+	inc
+
+	lr s, a
+
+	; TODO set VF
+
 	jmp fetchDecodeLoop
 .lastDigitSix:
 	; TODO quirk
@@ -397,6 +418,30 @@ firstDigitEight:
 
 	jmp fetchDecodeLoop
 .lastDigitSeven:
+	pi getX
+
+	lr a, s
+
+	com
+	inc
+
+	lr 0, a
+
+	pi getY
+
+	lr a, s
+
+	as 0
+	as 0
+	inc
+
+	lr 0, a
+
+	pi getX
+
+	lr s, a
+
+	; TODO set VF
 	jmp fetchDecodeLoop
 .lastDigitE:
 	; TODO quirk
