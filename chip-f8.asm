@@ -121,6 +121,11 @@ copyGameToRAM subroutine
 initInterpreter:
 	dci gameROM			; point at start of ROM
 	lr h, dc			; store PC in H (r10/r11)
+	
+	lisu 4				; set stack pointer
+	lisl 7
+	li 40
+	lr s, a
 
 fetchDecodeLoop:
 	lr dc, h			; load PC
@@ -182,19 +187,54 @@ firstDigitZero subroutine
 	pi	clrscrn			; TODO scratches several registers
 	jmp fetchDecodeLoop
 .returnFromSubroutine:
+	lisu 4
+	lisl 7
+	lr a, s
+	lr is, a
+	
+	lr a, i
+	lr hu, a
+	lr a, s
+	lr hl, a
+
+	lisu 4
+	lisl 7
+	ds s				; decrease stack pointer by two
+	ds s
+	
 	jmp fetchDecodeLoop
 
 firstDigitOne:
 	lr a, 1				; load first byte of opcode
 	ni $0F				; remove first nibble
 	ai $26				; add RAM offset
-	lr 10, a			; load into PC
+	lr hu, a			; load into PC
 	
 	lr a, 2				; load second byte of opcode
-	lr 11, a			; load into PC
+	lr hl, a			; load into PC
 	jmp fetchDecodeLoop
 
 firstDigitTwo:
+	lisu 4
+	lisl 7
+	lr a, s				; load stack pointer
+	inc					; increase stack pointer by two
+	inc
+	lr s, a
+	lr is, a			; load new stack pointer into ISAR
+
+	lr a, hu			; push PC onto stack
+	lr i, a
+	lr a, hl
+	lr s, a
+
+	lr a, 1				; load first byte of opcode
+	ni $0F				; remove first nibble
+	ai $26				; add RAM offset
+	lr hu, a			; load into PC
+	
+	lr a, 2				; load second byte of opcode
+	lr hl, a			; load into PC
 	jmp fetchDecodeLoop
 
 firstDigitThree subroutine
@@ -481,8 +521,8 @@ firstDigitNine subroutine
 	jmp fetchDecodeLoop
 
 firstDigitA:
-	lisu 5
-	lisl 0
+	lisu 4
+	lisl 1
 
 	lr a, 1				; load first byte of opcode
 	ni $0F				; remove first nibble
@@ -565,8 +605,8 @@ firstDigitD:
 	xdc
 
 	; load I into DC
-	lisu 5
-	lisl 0
+	lisu 4
+	lisl 1
 	lr a, i
 	lr qu, a
 	lr a, s
@@ -592,7 +632,7 @@ firstDigitD:
 	clr
 
 	lisu 4
-	lisl 0
+	lisl 3
 	lr i, a
 	lr d, a
 
@@ -642,7 +682,7 @@ firstDigitD:
 	lr q, dc			; store DC in Q so we can revert here
 
 	lisu 4				; take the assembled bytes
-	lisl 0
+	lisl 3
 
 	lr a, s				; first assembled byte
 	nm					; and with screen data to detect collision
@@ -766,8 +806,8 @@ firstDigitF:
 	jmp fetchDecodeLoop
 
 .lastNibble1E:
-	lisu 5
-	lisl 0
+	lisu 4
+	lisl 1
 
 	lr a, i
 	lr qu, a
@@ -791,8 +831,8 @@ firstDigitF:
 .adcHack:
 	adc					; add offset
 
-	lisu 5				; set ISAR to I
-	lisl 0
+	lisu 4				; set ISAR to I
+	lisl 1
 
 	lr q, dc			; load DC back into Q
 	lr a, qu
@@ -816,8 +856,8 @@ firstDigitF:
 
 	lr q, dc			; load it into Q
 
-	lisu 5				; set ISAR to I
-	lisl 0
+	lisu 4				; set ISAR to I
+	lisl 1
 
 	lr a, qu			; load Q into I via A
 	lr i, a
@@ -830,8 +870,8 @@ firstDigitF:
 	jmp fetchDecodeLoop
 
 .lastNibble55:
-	lisu 5
-	lisl 0
+	lisu 4
+	lisl 1
 
 	lr a, i
 	lr qu, a
@@ -858,8 +898,8 @@ firstDigitF:
 	jmp fetchDecodeLoop
 
 .lastNibble65:
-	lisu 5
-	lisl 0
+	lisu 4
+	lisl 1
 
 	lr a, i
 	lr qu, a
