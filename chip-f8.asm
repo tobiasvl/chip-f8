@@ -127,7 +127,7 @@ initInterpreter:
 	li 40
 	lr s, a
 
-fetchDecodeLoop:
+fetchDecodeLoop subroutine
 	lr dc, h			; load PC
 	lm					; fetch [PC] into A and advance
 	lr 1, a				; store first opcode byte in 1
@@ -135,7 +135,7 @@ fetchDecodeLoop:
 	lr 2, a				; store second opcode byte in 2
 	lr h, dc			; update PC
 
-	dci jumpTable
+	dci .jumpTable
 	lr a, 1
 	sr 4
 	adc
@@ -146,7 +146,7 @@ fetchDecodeLoop:
 	lr ql, a
 	lr p0, q
 	
-jumpTable:
+.jumpTable:
 	.word firstDigitZero
 	.word firstDigitOne
 	.word firstDigitTwo
@@ -304,47 +304,35 @@ firstDigitSeven:
 	lr s, a				; set new value of VX
 	jmp fetchDecodeLoop
 
-firstDigitEight:
+firstDigitEight subroutine
+	dci .jumpTable
 	lr a, 2				; get second byte of opcode
 	ni $0f				; remove first nibble
-	lr 0, a
-
-	; TODO convert below to jump table (or branch/offset table if space permits)
-
-	xi $00
-	bz .lastDigitZero
-
-	lr a, 0
-	xi $01
-	bz .lastDigitOne
-
-	lr a, 0
-	xi $02
-	bz .lastDigitTwo
-
-	lr a, 0
-	xi $03
-	bz .lastDigitThree
-
-	lr a, 0
-	xi $04
-	bz .lastDigitFour
-
-	lr a, 0
-	xi $05
-	bz .lastDigitFive
-
-	lr a, 0
-	xi $06
-	bz .lastDigitSix
-
-	lr a, 0
-	xi $07
-	bz .lastDigitSeven
-
-	lr a, 0
-	xi $0e
-	bz .lastDigitE
+	adc
+	adc
+	lm
+	lr qu, a
+	lm
+	lr ql, a
+	lr p0, q
+	
+.jumpTable:
+	.word .lastDigitZero
+	.word .lastDigitOne
+	.word .lastDigitTwo
+	.word .lastDigitThree
+	.word .lastDigitFour
+	.word .lastDigitFive
+	.word .lastDigitSix
+	.word .lastDigitSeven
+	.word .lastDigitEight
+	.word .lastDigitNine
+	.word .lastDigitA
+	.word .lastDigitB
+	.word .lastDigitC
+	.word .lastDigitD
+	.word .lastDigitE
+	.word .lastDigitF
 
 .lastDigitZero:
 	pi getY
@@ -483,6 +471,18 @@ firstDigitEight:
 
 	; TODO set VF
 	jmp fetchDecodeLoop
+.lastDigitEight:
+	jmp fetchDecodeLoop
+.lastDigitNine:
+	jmp fetchDecodeLoop
+.lastDigitA:
+	jmp fetchDecodeLoop
+.lastDigitB:
+	jmp fetchDecodeLoop
+.lastDigitC:
+	jmp fetchDecodeLoop
+.lastDigitD:
+	jmp fetchDecodeLoop
 .lastDigitE:
 	; TODO quirk
 	pi getY
@@ -498,6 +498,8 @@ firstDigitEight:
 
 	; TODO set VF
 
+	jmp fetchDecodeLoop
+.lastDigitF:
 	jmp fetchDecodeLoop
 	
 firstDigitNine subroutine
