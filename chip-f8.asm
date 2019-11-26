@@ -106,16 +106,14 @@ copyGameToRAM subroutine
 	dci gameROM
 	xdc
 	dci ram
-	li 132				; copy 132 bytes
-	lr 1, a				; use r1 as counter
 .copyByte:
 	xdc
 	lm					; copy byte from gameROM to A and advance DC0
 	xdc					; swap DC
 	st					; copy byte from A to gameRAM and advance DC0
-	ds 1				; decrement counter
-	lr a, 1				; check counter
-	ns 1				; AND a with itself
+	lr q, dc
+	lr a, qu			; check counter
+	xi $2f
 	bnz .copyByte
 
 initInterpreter:
@@ -1226,10 +1224,14 @@ blit:
 	pop
 
 
+; The CHIP-8 program will be copied from ROM to Schach RAM, of which
+; we have $700 or 1792 available bytes (the final $FF or 256 bytes are
+; reserved for the screen buffer). We assert both the size of the
+; Channel F ROM and the CHIP-8 ROM like so:
 
 gameROM:
-	incbin "IBM"
+	incbin "test_opcode.ch8"
 
 cartridgeEnd:
-	org $fff
-	.byte $ff
+	org gameROM + $6ff,0
+	.byte $00
