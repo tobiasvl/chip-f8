@@ -271,12 +271,12 @@ firstDigitFive subroutine
 	; TODO assert that last digit is 0
 
 	pi getX
-
 	lr a, s
+	lr 0, a
 
 	pi getY
-
-	xs s
+	lr a, s
+	xs 0
 
 	bnz .notEqual
 
@@ -349,13 +349,13 @@ firstDigitEight subroutine
 	pi getY
 
 	lr a, s
-	lr 0, a
+	lr 3, a
 
 	pi getX
 
 	lr a, s
 
-	os 0
+	os 3
 	lr s, a
 
 	jmp fetchDecodeLoop
@@ -504,12 +504,12 @@ firstDigitNine subroutine
 	; TODO assert that last digit is 0
 
 	pi getX
-
 	lr a, s
+	lr 0, a
 
 	pi getY
-
-	xs s
+	lr a, s
+	xs 0
 
 	bz .equal
 
