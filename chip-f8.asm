@@ -401,30 +401,40 @@ firstDigitEight subroutine
 	as 0
 	lr s, a
 
-	; TODO set VF
+	; Set VF
+	lisu 3
+	lisl 7
+
+	lr j, w
+	lr a, j
+	ni 2
+	sr 1
+	lr s, a
 
 	jmp fetchDecodeLoop
 .lastDigitFive:
 	pi getY
-
 	lr a, s
-
 	com
 	inc
-
 	lr 0, a
 
 	pi getX
-
 	lr a, s
 
 	as 0
-	as 0
-	inc
 
 	lr s, a
 
-	; TODO set VF
+	; Set VF
+	lisu 3
+	lisl 7
+
+	lr j, w
+	lr a, j
+	ni 2
+	sr 1
+	lr s, a
 
 	jmp fetchDecodeLoop
 .lastDigitSix:
@@ -440,34 +450,41 @@ firstDigitEight subroutine
 	sr 1
 	lr s, a
 
-	; TODO set VF
+	; Set VF
+	lisu 3
+	lisl 7
+
+	lr a, 0
+	ni 1
+	lr s, a
 
 	jmp fetchDecodeLoop
 .lastDigitSeven:
 	pi getX
-
 	lr a, s
-
 	com
 	inc
-
 	lr 0, a
 
 	pi getY
-
 	lr a, s
-
 	as 0
-	as 0
-	inc
-
 	lr 0, a
 
-	pi getX
+	; Set VF
+	lisu 3
+	lisl 7
 
+	lr j, w
+	lr a, j
+	ni 2
+	sr 1
 	lr s, a
 
-	; TODO set VF
+	pi getX
+	lr a, 0
+	lr s, a
+
 	jmp fetchDecodeLoop
 .lastDigitEight:
 	jmp fetchDecodeLoop
@@ -494,7 +511,17 @@ firstDigitEight subroutine
 	sl 1
 	lr s, a
 
-	; TODO set VF
+	; Set VF
+	lisu 3
+	lisl 7
+
+	lr a, 0
+	ni 8
+	sr 4
+	sr 1
+	sr 1
+	sr 1
+	lr s, a
 
 	jmp fetchDecodeLoop
 .lastDigitF:
@@ -584,9 +611,8 @@ firstDigitD:
 	sl 1
 	lr 6, a				; store Y in scratch 6
 
-	as 8				; r6 + r8, should be the same as an OR since we've cleared each nibble, right??? TODO
+	as 8				; r6 + r8
 
-	;xdc
 	lr ql, a
 	li $2f				; screenbuffer
 	lr qu, a
@@ -909,7 +935,7 @@ firstDigitF:
 .storeLoop:
 	lr a, i
 	st
-	ds 0				; TODO check that DS r sets W
+	ds 0
 	bp .storeLoop		; if positive number, loop
 
 	; TODO quirk, store DC back in I via Q
@@ -935,9 +961,9 @@ firstDigitF:
 	lisl 0
 
 .loadLoop:
-	lr a, i
 	lm
-	ds 0				; TODO check that DS r sets W
+	lr i, a
+	ds 0
 	bp .loadLoop		; if positive number, loop
 
 	; TODO quirk, store DC back in I via Q
