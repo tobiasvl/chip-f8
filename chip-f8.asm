@@ -789,48 +789,53 @@ firstDigitE:
 	jmp fetchDecodeLoop
 	
 firstDigitF:
-	pi getX
-
-	lr a, 2				; get second byte of opcode
-	lr 0, a
-
 	; TODO convert below to jump table (or branch/offset table if space permits)
 
+	lr a, 2				; get second byte of opcode
 	xi $07
-	bz .lastNibble07
-
-	lr a, 0
+	bnz .not07
+	jmp .lastNibble07
+.not07:
+	lr a, 2
 	xi $0A
-	bz .lastNibble0A
-
-	lr a, 0
+	bnz .not0A
+	jmp .lastNibble0A
+.not0A:
+	lr a, 2
 	xi $15
-	bz .lastNibble15
-	
-	lr a, 0
+	bnz .not15
+	jmp .lastNibble15
+.not15:
+	lr a, 2
 	xi $18
-	bz .lastNibble18
-	
-	lr a, 0
+	bnz .not18
+	jmp .lastNibble18
+.not18:
+	lr a, 2
 	xi $1E
-	bz .lastNibble1E
-	
-	lr a, 0
+	bnz .not1E
+	jmp .lastNibble1E
+.not1E:
+	lr a, 2
 	xi $29
-	bz .lastNibble29
-	
-	lr a, 0
+	bnz .not29
+	jmp .lastNibble29
+.not29:
+	lr a, 2
 	xi $33
-	bz .lastNibble33
-	
-	lr a, 0
+	bnz .not33
+	jmp .lastNibble33
+.not33:
+	lr a, 2
 	xi $55
-	bz .lastNibble55
-	
-	lr a, 0
+	bnz .not55
+	jmp .lastNibble55
+.not55:
+	lr a, 2
 	xi $65
-	bz .lastNibble65
-
+	bnz .not65
+	jmp .lastNibble65
+.not65:	
 	jmp fetchDecodeLoop
 
 .lastNibble07:
@@ -912,6 +917,102 @@ firstDigitF:
 	jmp fetchDecodeLoop
 
 .lastNibble33:
+	pi getX
+
+	; BCD routine courtesy of https://my.eng.utah.edu/~nmcdonal/Tutorials/BCDTutorial/BCDConversion.html
+
+	li 0
+	lr 0, a				; bit counter
+	lr 1, a				; hundreds (treat as nibble)
+	lr 2, a				; tens (treat as nibble)
+	lr 3, a				; ones (treat as nibble)
+
+	lr a, s
+	lr 4, a				; r4: the binary number to convert to BCD
+
+	li 8
+	lr 0, a
+
+.loop:
+	lr a, 1				; if hundreds > 4 then add 3
+	ci 4
+	bp .testTens
+	ai 3
+	lr 1, a
+.testTens:				; if tens > 4 then add 3
+	lr a, 2
+	ci 4
+	bp .testOnes
+	ai 3
+	lr 2, a
+.testOnes:				; if ones > 4 then add 3
+	lr a, 3
+	ci 4
+	bp .shift
+	ai 3
+	lr 3, a
+
+.shift:
+	lr a, 1				; shift hundreds nibble left
+	sl 1
+	ni $0f
+	lr 1, a
+
+	lr a, 2
+	ni $08				; if tens most significant bit is 1, carry it over to hundreds
+	bz .shiftTens
+	lr a, 1
+	inc
+	lr 1, a
+.shiftTens:				; shift tens nibble left
+	lr a, 2
+	sl 1
+	ni $0f
+	lr 2, a
+
+	lr a, 3
+	ni $08				; if ones most significant bit is 1, carry it over to tens
+	bz .shiftOnes
+	lr a, 2
+	inc
+	lr 2, a
+.shiftOnes:				; shift ones nibble left
+	lr a, 3
+	sl 1
+	ni $0f
+	lr 3, a
+
+	lr a, 4
+	ni $80				; if binary number's most significant bit is 1, carry it over to ones
+	bz .shiftByte
+	lr a, 3
+	inc
+	lr 3, a
+.shiftByte:				; shift binary number left
+	lr a, 4
+	sl 1
+	lr 4, a
+
+	ds 0				; decrement bit counter
+	bnz .loop			; if we haven't processed the entire binary number, continue
+
+	lisu 4
+	lisl 1
+
+	lr a, i
+	lr qu, a
+	lr a, s
+	lr ql, a
+
+	lr dc, q			; get I
+
+	lr a, 1
+	st					; store hundreds
+	lr a, 2
+	st					; store tens
+	lr a, 3
+	st					; store ones
+
 	jmp fetchDecodeLoop
 
 .lastNibble55:
